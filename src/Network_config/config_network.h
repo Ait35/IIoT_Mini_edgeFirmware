@@ -12,6 +12,7 @@ void connectWiFi(String *ssid = nullptr, String *password = nullptr) {
         while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
             delay(500);
             Serial.print(".");
+            Serial.print("5555");
         }
 
         if (WiFi.status() == WL_CONNECTED) {

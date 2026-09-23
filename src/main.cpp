@@ -2,11 +2,19 @@
 #include <WiFi.h>
 #include <ArduinoJson.h>
 #include "time.h"
+#include <HTTPClient.h>
+#include<PubSubClient.h>
+#include <WebServer.h>
+#include <LittleFS.h>
+#include <Preferences.h>
 #include <data_include.h>
 
 #include <./Network_config/WebServerSetup.h>
 #include <./Network_config/config_network.h>
 #include <./Network_config/esp32_Ap.h>
+
+#include <./Mqtt_service/setup_mqtt.h>
+#include <./Mqtt_service/pub_Active.h>
 
 #define rfid_RxPin 15
 #define rfid_TxPin 16
@@ -46,8 +54,6 @@ void setup() {
         delay(10);
     }
 
-    configTime(7*3600, 0, "pool.ntp.org");
-
     if (!LittleFS.begin(true)) {
         Serial.println("An Error has occurred while mounting LittleFS");
     }
@@ -65,10 +71,25 @@ void setup() {
 
     Serial.println("Connecting to WiFi: " + wifiInfo.EEPROM_SSID);
     connectWiFi(&wifiInfo.EEPROM_SSID, &wifiInfo.EEPROM_Pass);
+    Serial.print("connect internet...");
+    while (WiFi.status() != WL_CONNECTED) {
+        loopWebServer();
+        delay(500);
+    }
+    
+    configTime(7*3600, 0, "pool.ntp.org");
+    client.setServer(mqtt_server, mqtt_port); //อยู่ใน inculde
 }
 
 void loop() {
     loopWebServer();
+    if(WiFi.status() != WL_CONNECTED){
+        ESP.restart();
+    }
+    if (!client.connected()) {
+      testMQTT_connect();   
+    }
+    client.loop();
 
     static std::vector<uint8_t> frameBuffer;
 
@@ -111,6 +132,8 @@ void loop() {
                 else {
                     Serial.printf("➔ พบแท็กใบอื่น ๆ รหัสคือ: %s\n", currentEpc.c_str());
                 }
+                testPub();
+                sendDataToAPI(currentEpc);
             }
             
             frameBuffer.clear(); 
@@ -125,32 +148,3 @@ void loop() {
 
     delay(1); 
 }
-
-
-// void loop() {
-//     loopWebServer();
-//     if (Serial2.available() > 0) {
-//         Serial.print("Data incoming: ");
-        
-//         // วนลูปอ่านข้อมูลที่ส่งมาทั้งหมดในรอบนั้นออกมาพิมพ์โชว์
-//         while(Serial2.available() > 0) {
-//             uint8_t cardData = Serial2.read();
-        
-//             if (cardData < 0x10) Serial.print("0");
-
-//             Serial.print(cardData, HEX);
-//             Serial.print(" ");
-//             if (cardData == "E28069950000401636C74999") {
-                
-//                 Serial.println("➔ นี่คือ แท็กของสินค้า A (สั่งเปิดไฟสีเขียว)");
-//             }else if (cardData == "E28069950000400C84B2D120") {
-//                 Serial.println("➔ นี่คือ แท็กของสินค้า B (สั่งเปิดไฟสีแดง)");
-//             } else {
-//                 Serial.println("➔ นี่คือ แท็กของสินค้าอื่น ๆ");
-//             }
-//         }
-        
-//         Serial.println();
-//     }
-//     delay(10);
-// }

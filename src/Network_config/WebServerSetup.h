@@ -1,9 +1,4 @@
-#include <WebServer.h>
-#include <LittleFS.h>
-#include <Preferences.h>
-
 WebServer server(80);
-Preferences preferences;
 
  // ยิง Request ไปขอ status
 void handleStatus() {
@@ -82,6 +77,47 @@ void setupWebServer() {
 
     Serial.println("HTTP server started");
 }
+
+void sendDataToAPI(String rfid_tag) {
+    if (WiFi.status() == WL_CONNECTED) {
+        HTTPClient http;
+
+        String serverPath = "http://172.20.10.3:3000/api/db/equipment"; 
+        http.begin(serverPath);
+        
+        // 3. ตั้งค่า Header ว่าเราจะส่งข้อมูลแบบ JSON
+        http.addHeader("Content-Type", "application/json");
+        
+        JsonDocument doc;
+        doc["deviceId"] = wifiInfo.deviceId; 
+        doc["IP"] = wifiInfo.IP;
+        doc["epc"] = rfid_tag;       
+        doc["timestamp"] = gettime();
+        
+        String jsonPayload;
+        serializeJson(doc, jsonPayload);
+        
+        Serial.println("Sending API Payload: " + jsonPayload);
+
+        int httpResponseCode = http.POST(jsonPayload);
+        
+        // 6. เช็คผลลัพธ์การตอบกลับจาก Server
+        if (httpResponseCode > 0) {
+            String response = http.getString();
+            Serial.print("HTTP Response code: ");
+            Serial.println(httpResponseCode);
+            Serial.println("Response from server: " + response);
+        } else {
+            Serial.print("Error code on sending POST: ");
+            Serial.println(httpResponseCode);
+        }
+
+        http.end();
+    } else {
+        Serial.println("WiFi Disconnected, cannot send API");
+    }
+}
+
 
 
 void loopWebServer() {

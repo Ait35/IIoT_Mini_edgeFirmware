@@ -1,5 +1,16 @@
 #ifndef DATA_INCLUDE_H
 #define DATA_INCLUDE_H
+//test
+const char* mqtt_server = "broker.emqx.io";
+const int mqtt_port = 1883;
+const char* mqtt_user = "";    
+const char* mqtt_pass = "";    
+const char* topic_pub = "test001"; 
+//endtest
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+Preferences preferences;
 
 struct wifi_info {
     String EEPROM_SSID ;
@@ -32,6 +43,21 @@ String gettime() {
     Serial.println("Failed to obtain time");
     return "";
   }
+}
+
+String getEEprom(String name , String key = ""){
+  String res ;
+  preferences.begin(name.c_str(),true);
+  res = preferences.getString(key.c_str() ,"");
+  preferences.end();
+  return res;
+}
+
+void claer_ALL_EEprom(String name){
+ //ลบ
+  preferences.begin(name.c_str(), false);
+  preferences.clear();
+  preferences.end();
 }
 
 #endif
